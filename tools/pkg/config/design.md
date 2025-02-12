@@ -4,8 +4,8 @@
 
 | key         | type    | default value   | optional | meaning           |
 | -------------- | ------- | -------- | -------- | -------------- |
-| name           | string  | 无       | ✅       | package name       |
-| version        | string  | 无       | ✅       | package version    |
+| name           | string  |        | ✅       | package name       |
+| version        | string  |        | ✅       | package version    |
 | versionChange  | bool    | true       | ❌     | use llpkg's auto version change |
 
 ## upstream
