@@ -8,8 +8,8 @@ type LLpkgConfig struct {
 
 type Package struct {
 	Name          string `json:"name"`
-	Version       string `json:"version,omitempty"`
-	VersionChange bool   `json:"versionChange"`
+	CVersion      string `json:"cVersion,omitempty"`
+	ModuleVersion string `json:"moduleVersion,omitempty"`
 }
 
 type Upstream struct {
