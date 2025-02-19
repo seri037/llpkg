@@ -14,6 +14,10 @@ import (
 	"strings"
 )
 
+type ConanSearchResult struct {
+	Conancenter map[string]struct{} `json:"conancenter"`
+}
+
 func withStack(err error) error {
 	return fmt.Errorf("%w\n%s", err, debug.Stack())
 }
@@ -49,14 +53,39 @@ func ParseLLpkgConfig(configPath string) (LLpkgConfig, error) {
 		config.Toolchain.Version = "latest"
 	}
 
+	spinner := NewLoadingSpinner("Searching for available versions")
+	spinner.Start()
+
 	cmd := exec.Command("conan", "search", config.Package.Name, "-r", "conancenter")
 	out, err := cmd.Output()
+
+	spinner.Stop()
+
 	if err != nil {
 		return config, withStack(fmt.Errorf("failed to execute conan command: %w", err))
 	}
 	cmdString := string(out)
 	fmt.Print(cmdString)
 	versions := extractVersions(cmdString, config.Package.Name)
+	if len(versions) == 0 {
+		// 回滚到 json 格式的输出
+		var result ConanSearchResult
+		cmd := exec.Command("conan", "search", config.Package.Name, "-r", "conancenter", "-f", "json")
+		out, err := cmd.Output()
+		if err != nil {
+			return config, withStack(fmt.Errorf("failed to execute conan command: %w", err))
+		}
+		err = json.Unmarshal(out, &result)
+		if err != nil {
+			return config, withStack(fmt.Errorf("failed to decode json output: %w", err))
+		}
+		for versionString := range result.Conancenter {
+			versions = append(versions, strings.Split(versionString, "/")[1])
+		}
+	}
+	if len(versions) == 0 {
+		return config, withStack(errors.New("no versions found"))
+	}
 
 	// check if the package name is set
 	if config.Package.Name == "" {
