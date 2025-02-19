@@ -46,7 +46,10 @@ func ParseLLpkgConfig(configPath string) (LLpkgConfig, error) {
 	if config.Generator.Name == "" {
 		config.Generator.Name = "llcppg"
 	}
-	if config.Generator.Version == "" {
+	if config.Generator.Version == "" || config.Generator.Version == "latest" {
+		config.Generator.Version = "latest"
+	} else {
+		fmt.Println("Warning: generator.version is not supported yet, using \"latest\"")
 		config.Generator.Version = "latest"
 	}
 
