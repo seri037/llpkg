@@ -2,13 +2,13 @@ package config
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"reflect"
+	"regexp"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -49,44 +49,24 @@ func ParseLLpkgConfig(configPath string) (LLpkgConfig, error) {
 		config.Toolchain.Version = "latest"
 	}
 
+	cmd := exec.Command("conan", "search", config.Package.Name, "-r", "conancenter")
+	out, err := cmd.Output()
+	if err != nil {
+		return config, withStack(fmt.Errorf("failed to execute conan command: %w", err))
+	}
+	cmdString := string(out)
+	fmt.Print(cmdString)
+	versions := extractVersions(cmdString, config.Package.Name)
+
 	// check if the package name is set
 	if config.Package.Name == "" {
 		return config, withStack(errors.New("invalid configuration: package.name is required"))
 	}
+
 	if config.Package.Version == "" {
-		fmt.Println("Warning: package.version is not set \n Setting it to latest ")
+		fmt.Println("Warning: package.cVersion is not set \n Setting it to latest ")
 
-		cmd := exec.Command("conan", "search", config.Package.Name, "-f", "json", "-r", "conancenter")
-		out, err := cmd.Output()
-		if err != nil {
-			return config, withStack(fmt.Errorf("failed to execute conan command: %w", err))
-		}
-
-		scanner := bufio.NewScanner(bytes.NewReader(out))
-		var latestVersion string
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if strings.HasPrefix(line, `"`+config.Package.Name+`/`) {
-				line = strings.Trim(line, `",`)
-				parts := strings.Split(line, "/")
-				if len(parts) != 2 {
-					continue
-				}
-				latestVersion = parts[1]
-			}
-		}
-
-		versionInfo := make(map[string]interface{})
-		err = json.Unmarshal([]byte(out), &versionInfo)
-		if err != nil {
-			return config, withStack(fmt.Errorf("failed to parse JSON response: %w", err))
-		}
-
-		availableVersion := make([]string, 0, len(versionInfo["conancenter"].(map[string]interface{})))
-		for k := range versionInfo["conancenter"].(map[string]interface{}) {
-			availableVersion = append(availableVersion, strings.Split(k, "/")[1])
-		}
-		fmt.Println("Available versions:", strings.Join(availableVersion, ", "))
+		fmt.Println("Available versions:", strings.Join(versions, ", "))
 		fmt.Print("Which version would you like to use? (n to exit, return to use latest): ")
 
 		reader := bufio.NewReader(os.Stdin)
@@ -100,11 +80,17 @@ func ParseLLpkgConfig(configPath string) (LLpkgConfig, error) {
 		}
 
 		if input == "" {
-			config.Package.Version = latestVersion
-		} else if !slices.Contains(availableVersion, input) {
+			config.Package.Version = versions[len(versions)-1]
+		} else if !slices.Contains(versions, input) {
 			return config, withStack(errors.New("invalid version"))
 		} else {
 			config.Package.Version = input
+		}
+	} else {
+		if !slices.Contains(versions, config.Package.Version) {
+			fmt.Print("Your input version is not in the list")
+			fmt.Println("Available versions:", strings.Join(versions, ", "))
+			return config, withStack(errors.New("invalid version"))
 		}
 	}
 
@@ -159,4 +145,25 @@ func PrintStruct(s interface{}, indent string) {
 			fmt.Printf("%s%s: %v\n", indent, fieldType.Name, fieldVal.Interface())
 		}
 	}
+}
+
+func extractVersions(consoleOutput string, pkgName string) []string {
+	// 按行分割控制台输出
+	lines := strings.Split(consoleOutput, "\n")
+	pkgNameRegex := regexp.MustCompile(pkgName + "/" + ".*")
+
+	// 定义一个切片来存储版本号
+	var versions []string
+
+	// 从最后一行开始反向遍历
+	for i := len(lines) - 1; i >= 0; i-- {
+		// 匹配包名
+		if pkgNameRegex.MatchString(lines[i]) {
+			versions = append([]string{strings.Split(lines[i], "/")[1]}, versions...)
+		} else {
+			break
+		}
+	}
+
+	return versions
 }
