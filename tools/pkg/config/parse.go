@@ -37,23 +37,23 @@ func ParseLLpkgConfig(configPath string) (LLpkgConfig, error) {
 	}
 
 	// set default values
-	if config.Upstream.Name == "" {
-		config.Upstream.Name = "conan"
+	if config.Upstream.Installer == "" {
+		config.Upstream.Installer = "conan"
 	}
 	if config.Upstream.Config.Options == "" {
 		config.Upstream.Config.Options = ""
 	}
-	if config.Toolchain.Name == "" {
-		config.Toolchain.Name = "llcppg"
+	if config.Generator.Name == "" {
+		config.Generator.Name = "llcppg"
 	}
-	if config.Toolchain.Version == "" {
-		config.Toolchain.Version = "latest"
+	if config.Generator.Version == "" {
+		config.Generator.Version = "latest"
 	}
 
 	spinner := NewLoadingSpinner("Searching for available versions")
 	spinner.Start()
 
-	cmd := exec.Command("conan", "search", config.Package.Name, "-r", "conancenter")
+	cmd := exec.Command("conan", "search", config.Upstream.Package.Name, "-r", "conancenter")
 	out, err := cmd.Output()
 
 	spinner.Stop()
@@ -63,11 +63,11 @@ func ParseLLpkgConfig(configPath string) (LLpkgConfig, error) {
 	}
 	cmdString := string(out)
 	fmt.Print(cmdString)
-	versions := extractVersions(cmdString, config.Package.Name)
+	versions := extractVersions(cmdString, config.Upstream.Package.Name)
 	if len(versions) == 0 {
 		// fallback to json output
 		var result ConanSearchResult
-		cmd := exec.Command("conan", "search", config.Package.Name, "-r", "conancenter", "-f", "json")
+		cmd := exec.Command("conan", "search", config.Upstream.Package.Name, "-r", "conancenter", "-f", "json")
 		out, err := cmd.Output()
 		if err != nil {
 			return config, withStack(fmt.Errorf("failed to execute conan command: %w", err))
@@ -85,41 +85,41 @@ func ParseLLpkgConfig(configPath string) (LLpkgConfig, error) {
 	}
 
 	// check if the package name is set
-	if config.Package.Name == "" {
+	if config.Upstream.Package.Name == "" {
 		return config, withStack(errors.New("invalid configuration: package.name is required"))
 	}
 
-	if config.Package.CVersion == "" {
+	if config.Upstream.Package.Version == "" {
 		fmt.Println("Warning: package.cVersion is not set ")
-		config.Package.CVersion = selectVersion(versions)
-		if config.Package.CVersion == "" {
+		config.Upstream.Package.Version = selectVersion(versions)
+		if config.Upstream.Package.Version == "" {
 			return config, withStack(errors.New("invalid version"))
 		}
 	} else {
-		if !slices.Contains(versions, config.Package.CVersion) {
+		if !slices.Contains(versions, config.Upstream.Package.Version) {
 			fmt.Print("Your input version is not in the list")
 			fmt.Println("Available versions:", strings.Join(versions, ", "))
 			return config, withStack(errors.New("invalid version"))
 		}
 	}
 
-	var moduleVersionRegex = regexp.MustCompile(`v\d+\.\d+\.\d+`)
-	if config.Package.ModuleVersion == "" {
-		fmt.Println("Warning: package.moduleVersion is not set.")
-		var moduleVersion string
-		for !moduleVersionRegex.MatchString(moduleVersion) {
-			fmt.Println("Input the SEMANTIC version with \"v\" you would like to use (eg: v1.0.0): ")
-			reader := bufio.NewReader(os.Stdin)
-			moduleVersion, _ = reader.ReadString('\n')
-			moduleVersion = strings.TrimSpace(moduleVersion)
-		}
-	} else {
-		if !moduleVersionRegex.MatchString(config.Package.ModuleVersion) {
-			fmt.Println("Invalid module version")
-			fmt.Println("Filed \"moduleVersion\" requires a SEMANTIC version with \"v\" (eg: v1.0.0)")
-			return config, withStack(errors.New("invalid module version"))
-		}
-	}
+	// var moduleVersionRegex = regexp.MustCompile(`v\d+\.\d+\.\d+`)
+	// if config.Package.ModuleVersion == "" {
+	// 	fmt.Println("Warning: package.moduleVersion is not set.")
+	// 	var moduleVersion string
+	// 	for !moduleVersionRegex.MatchString(moduleVersion) {
+	// 		fmt.Println("Input the SEMANTIC version with \"v\" you would like to use (eg: v1.0.0): ")
+	// 		reader := bufio.NewReader(os.Stdin)
+	// 		moduleVersion, _ = reader.ReadString('\n')
+	// 		moduleVersion = strings.TrimSpace(moduleVersion)
+	// 	}
+	// } else {
+	// 	if !moduleVersionRegex.MatchString(config.Package.ModuleVersion) {
+	// 		fmt.Println("Invalid module version")
+	// 		fmt.Println("Filed \"moduleVersion\" requires a SEMANTIC version with \"v\" (eg: v1.0.0)")
+	// 		return config, withStack(errors.New("invalid module version"))
+	// 	}
+	// }
 
 	// check if the config is valid
 	err = validateConfig(config)

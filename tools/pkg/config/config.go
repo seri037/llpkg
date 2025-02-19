@@ -1,27 +1,26 @@
 package config
 
 type LLpkgConfig struct {
-	Package   Package   `json:"package"`
-	Upstream  Upstream  `json:"upstream,omitempty"`
-	Toolchain Toolchain `json:"toolchain,omitempty"`
-}
-
-type Package struct {
-	Name          string `json:"name"`
-	CVersion      string `json:"cVersion,omitempty"`
-	ModuleVersion string `json:"moduleVersion,omitempty"`
+	Upstream  Upstream  `json:"upstream"`
+	Generator Generator `json:"generator"`
 }
 
 type Upstream struct {
-	Name   string         `json:"name,omitempty"`
-	Config UpstreamConfig `json:"config,omitempty"`
+	Installer string         `json:"installer"`
+	Config    UpstreamConfig `json:"config"`
+	Package   Package        `json:"package"`
 }
 
 type UpstreamConfig struct {
-	Options string `json:"options,omitempty"`
+	Options string `json:"options"`
 }
 
-type Toolchain struct {
-	Name    string `json:"name,omitempty"`
-	Version string `json:"version,omitempty"`
+type Package struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+type Generator struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
