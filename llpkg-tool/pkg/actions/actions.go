@@ -16,14 +16,24 @@ func must(err error) {
 	}
 }
 
+// envToString converts a env map to string
+func envToString(envm map[string]string) string {
+	var env []string
+
+	for name, value := range envm {
+		env = append(env, fmt.Sprintf("%s=%s", name, value))
+	}
+	return strings.Join(env, "\n")
+}
+
 // Setenv sets the value of the Github environment variable named by the key.
-func Setenv(name, value string) {
+func Setenv(envm map[string]string) {
 	env, err := os.OpenFile(os.Getenv("GITHUB_ENV"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	// should never happen,
 	// it means current runtime is not Github actions if there's any errors
 	must(err)
 
-	env.WriteString(fmt.Sprintf("%s=%s\n", name, value))
+	env.WriteString(envToString(envm))
 
 	// make sure we write it to the GITHUB_ENV
 	env.Close()
