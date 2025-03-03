@@ -91,7 +91,7 @@ func ParseLLpkgConfig(configPath string) (LLpkgConfig, error) {
 		}
 	} else {
 		if !slices.Contains(versions, config.Upstream.Package.Version) {
-			fmt.Print("Your input version is not in the list")
+			fmt.Println("Your input version is not in the list")
 			fmt.Println("Available versions:", strings.Join(versions, ", "))
 			return config, withStack(errors.New("invalid version"))
 		}
