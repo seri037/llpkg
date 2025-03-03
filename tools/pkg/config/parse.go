@@ -37,20 +37,11 @@ func ParseLLpkgConfig(configPath string) (LLpkgConfig, error) {
 	}
 
 	// set default values
-	if config.Upstream.Installer == "" {
-		config.Upstream.Installer = "conan"
+	if config.Upstream.Installer.Name == "" {
+		config.Upstream.Installer.Name = "conan"
 	}
-	if config.Upstream.Config.Options == "" {
-		config.Upstream.Config.Options = ""
-	}
-	if config.Generator.Name == "" {
-		config.Generator.Name = "llcppg"
-	}
-	if config.Generator.Version == "" || config.Generator.Version == "latest" {
-		config.Generator.Version = "latest"
-	} else {
-		fmt.Println("Warning: generator.version is not supported yet, using \"latest\"")
-		config.Generator.Version = "latest"
+	if config.Upstream.Installer.Config.Options == "" {
+		config.Upstream.Installer.Config.Options = ""
 	}
 
 	spinner := NewLoadingSpinner("Searching for available versions")
@@ -124,40 +115,7 @@ func ParseLLpkgConfig(configPath string) (LLpkgConfig, error) {
 	// 	}
 	// }
 
-	// check if the config is valid
-	err = validateConfig(config)
-	if err != nil {
-		return config, err
-	}
-
 	return config, nil
-}
-
-func validateConfig(config LLpkgConfig) error {
-	v := reflect.ValueOf(config)
-	t := reflect.TypeOf(config)
-
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		fieldType := t.Field(i)
-
-		if field.Kind() == reflect.Struct {
-			for j := 0; j < field.NumField(); j++ {
-				subField := field.Field(j)
-				subFieldType := fieldType.Type.Field(j)
-
-				if !subField.IsValid() {
-					return fmt.Errorf("invalid configuration: %s.%s is required", fieldType.Name, subFieldType.Name)
-				}
-			}
-		} else {
-			if !field.IsValid() {
-				return fmt.Errorf("invalid configuration: %s is required", fieldType.Name)
-			}
-		}
-	}
-
-	return nil
 }
 
 func PrintStruct(s interface{}, indent string) {
@@ -178,16 +136,12 @@ func PrintStruct(s interface{}, indent string) {
 }
 
 func extractVersions(consoleOutput string, pkgName string) []string {
-	// 按行分割控制台输出
 	lines := strings.Split(consoleOutput, "\n")
 	pkgNameRegex := regexp.MustCompile(pkgName + "/" + ".*")
 
-	// 定义一个切片来存储版本号
 	var versions []string
 
-	// 从最后一行开始反向遍历
 	for i := len(lines) - 1; i >= 0; i-- {
-		// 匹配包名
 		if pkgNameRegex.MatchString(lines[i]) {
 			versions = append([]string{strings.Split(lines[i], "/")[1]}, versions...)
 		} else {

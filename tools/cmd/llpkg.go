@@ -16,6 +16,7 @@ func main() {
 		return
 	}
 	fmt.Println(config)
+	fmt.Println(config.Upstream.Installer.Config.Options)
 	flag.Parse()
 	if *llpkgConfigPath == "" {
 		printUsage()
