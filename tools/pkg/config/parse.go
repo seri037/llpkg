@@ -137,15 +137,31 @@ func PrintStruct(s interface{}, indent string) {
 
 func extractVersions(consoleOutput string, pkgName string) []string {
 	lines := strings.Split(consoleOutput, "\n")
-	pkgNameRegex := regexp.MustCompile(pkgName + "/" + ".*")
+	versionPattern := regexp.MustCompile(`\s+` + regexp.QuoteMeta(pkgName) + `.*`)
 
 	var versions []string
+	var inPackageSection bool
+	var currentIndent int
 
-	for i := len(lines) - 1; i >= 0; i-- {
-		if pkgNameRegex.MatchString(lines[i]) {
-			versions = append([]string{strings.Split(lines[i], "/")[1]}, versions...)
-		} else {
-			break
+	for _, line := range lines {
+		trimmedLine := strings.TrimLeft(line, " ")
+		indent := len(line) - len(trimmedLine)
+
+		if strings.TrimSpace(line) == pkgName {
+			inPackageSection = true
+			currentIndent = indent
+			continue
+		}
+
+		if inPackageSection && indent <= currentIndent {
+			inPackageSection = false
+		}
+
+		if inPackageSection && indent > currentIndent {
+			matches := versionPattern.FindStringSubmatch(line)
+			if len(matches) > 1 {
+				versions = append(versions, matches[1])
+			}
 		}
 	}
 
