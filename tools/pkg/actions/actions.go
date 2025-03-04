@@ -1,9 +1,21 @@
 package actions
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"os/exec"
 	"strings"
+	"time"
+
+	"github.com/google/go-github/v69/github"
+)
+
+var (
+	client     = github.NewClient(nil)
+	ErrNoToken = errors.New("actions: no GH_TOKEN")
 )
 
 // In our previous design, each platform should generate *_{OS}_{Arch}.go file
@@ -48,4 +60,38 @@ func Changes() []string {
 		panic("cannot find changes file!")
 	}
 	return strings.Fields(changes)
+}
+
+func BranchExist(branchName string) (bool, error) {
+	token := os.Getenv("GH_TOKEN")
+	if token == "" {
+		return false, ErrNoToken
+	}
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+
+	authClient := client.WithAuthToken(token)
+	branch, resp, err := authClient.Repositories.GetBranch(ctx,
+		os.Getenv("GITHUB_REPOSITORY_OWNER"),
+		os.Getenv("GITHUB_REPOSITORY"),
+		branchName, 0,
+	)
+
+	exists := err == nil &&
+		branch != nil &&
+		resp.StatusCode == http.StatusOK
+
+	return exists, err
+}
+
+func CreateBranch(branchName, tag string) error {
+	ret, err := exec.Command("git", "checkout", "-b", branchName, tag).CombinedOutput()
+	if err != nil {
+		return errors.New(string(ret))
+	}
+	ret, err = exec.Command("git", "push", "-u", "origin", branchName).CombinedOutput()
+	if err != nil {
+		return errors.New(string(ret))
+	}
+	return nil
 }
