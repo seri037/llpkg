@@ -95,3 +95,25 @@ func CreateBranch(branchName, tag string) error {
 	}
 	return nil
 }
+
+func IsAssociatedWithPullRequest(sha string) (bool, error) {
+	token := os.Getenv("GH_TOKEN")
+	if token == "" {
+		return false, ErrNoToken
+	}
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+
+	authClient := client.WithAuthToken(token)
+	pulls, resp, err := authClient.PullRequests.ListPullRequestsWithCommit(ctx,
+		os.Getenv("GITHUB_REPOSITORY_OWNER"),
+		os.Getenv("GITHUB_REPOSITORY"),
+		sha, &github.ListOptions{},
+	)
+
+	ok := err == nil &&
+		resp.StatusCode == http.StatusOK &&
+		len(pulls) > 0
+
+	return ok, err
+}
