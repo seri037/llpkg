@@ -4,19 +4,19 @@ import (
 	"flag"
 	"fmt"
 
-	configCLI "github.com/goplus/llpkg/llpkg-tool/pkg/config"
+	"github.com/goplus/llpkg/tools/pkg/config"
 )
 
 var llpkgConfigPath = flag.String("config", "", "path to config file")
 
 func main() {
-	config, err := configCLI.ParseLLpkgConfig("./llpkg-tool/demo/.llpkg/llpkg.cfg")
+	config, err := config.ParseLLpkgConfig("./llpkg-tool/_demo/.llpkg/llpkg.cfg")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
 	fmt.Println(config)
-	fmt.Println(config.Upstream.Installer.Config.Options)
+	fmt.Println(config.UpstreamConfig.InstallerConfig.Config["options"])
 	flag.Parse()
 	if *llpkgConfigPath == "" {
 		printUsage()

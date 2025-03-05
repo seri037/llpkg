@@ -1,23 +1,23 @@
-package config
+package cli
 
 import (
 	"fmt"
 	"time"
 )
 
-type LoadingSpinner struct {
+type loadingSpinner struct {
 	stopChan chan struct{}
 	message  string
 }
 
-func NewLoadingSpinner(message string) *LoadingSpinner {
-	return &LoadingSpinner{
+func NewLoadingSpinner(message string) *loadingSpinner {
+	return &loadingSpinner{
 		stopChan: make(chan struct{}),
 		message:  message,
 	}
 }
 
-func (s *LoadingSpinner) Start() {
+func (s *loadingSpinner) Start() {
 	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 	go func() {
 		for i := 0; ; i++ {
@@ -34,6 +34,6 @@ func (s *LoadingSpinner) Start() {
 	}()
 }
 
-func (s *LoadingSpinner) Stop() {
+func (s *loadingSpinner) Stop() {
 	s.stopChan <- struct{}{}
 }
