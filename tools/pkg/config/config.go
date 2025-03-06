@@ -1,23 +1,22 @@
 package config
 
+var ValidInstallers = []string{"conan"}
+
 type LLpkgConfig struct {
-	Package   Package   `json:"package"`
-	Upstream  Upstream  `json:"upstream"`
-	ToolChain ToolChain `json:"toolchain"`
+	UpstreamConfig UpstreamConfig `json:"upstream"`
 }
 
-type Package struct {
+type UpstreamConfig struct {
+	InstallerConfig InstallerConfig `json:"installer"`
+	PackageConfig   PackageConfig   `json:"package"`
+}
+
+type InstallerConfig struct {
+	Name   string            `json:"name"`
+	Config map[string]string `json:"config,omitempty"`
+}
+
+type PackageConfig struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
-}
-
-type Upstream struct {
-	Name   string            `json:"name"`
-	Config map[string]string `json:"config"`
-}
-
-type ToolChain struct {
-	Name    string            `json:"name"`
-	Version string            `json:"version"`
-	Config  map[string]string `json:"config"`
 }
