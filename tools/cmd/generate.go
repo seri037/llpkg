@@ -7,8 +7,6 @@ import (
 
 	"github.com/goplus/llpkg/tools/pkg/actions/generator/llcppg"
 	"github.com/goplus/llpkg/tools/pkg/config"
-	"github.com/goplus/llpkg/tools/pkg/upstream"
-	"github.com/goplus/llpkg/tools/pkg/upstream/installer/conan"
 	"github.com/spf13/cobra"
 )
 
@@ -29,27 +27,19 @@ func currentDir() string {
 	return filepath.Dir(absFile)
 }
 
-func installerFromConfig(cfg config.LLpkgConfig) upstream.Installer {
-	switch cfg.UpstreamConfig.InstallerConfig.Name {
-	case "conan":
-		return conan.NewConanInstaller(cfg.UpstreamConfig.InstallerConfig.Config)
-	default:
-		panic("installer is not supported")
-	}
-}
-
 func runLLCppgGenerateWithDir(dir string) {
 	cfg, err := config.ParseLLpkgConfig(filepath.Join(dir, LLGOModuleIdentifyFile))
 	if err != nil {
 		log.Fatalf("parse config error: %v", err)
 	}
-	installer := installerFromConfig(cfg)
-
-	err = installer.Install(upstream.Package(cfg.UpstreamConfig.PackageConfig), dir)
+	uc, err := config.NewUpstreamFromConfig(cfg.UpstreamConfig)
+	if err != nil {
+		log.Fatal()
+	}
+	err = uc.Installer().Install(uc.Package(), dir)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// we have to feed the pc to llcppg
 	os.Setenv("PKG_CONFIG_PATH", dir)
 
