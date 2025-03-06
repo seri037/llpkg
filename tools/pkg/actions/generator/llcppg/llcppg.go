@@ -56,7 +56,7 @@ func (l *llcppgGenerator) Generate() error {
 		return errors.Join(ErrLLCppgGenerate, err)
 	}
 	// clean path
-	os.Remove(baseDir)
+	os.RemoveAll(baseDir)
 	// remove llcppg.symb.json
 	os.Remove(filepath.Join(l.dir, "llcppg.symb.json"))
 	return nil

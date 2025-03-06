@@ -1,21 +1,11 @@
 package actions
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
-	"time"
-
-	"github.com/google/go-github/v69/github"
-)
-
-var (
-	client     = github.NewClient(nil)
-	ErrNoToken = errors.New("actions: no GH_TOKEN")
 )
 
 // In our previous design, each platform should generate *_{OS}_{Arch}.go file
@@ -38,7 +28,7 @@ func envToString(envm map[string]string) string {
 	return strings.Join(env, "\n")
 }
 
-// Setenv sets the value of the Github environment variable named by the key.
+// Setenv sets the value of the Github Action environment variable named by the key.
 func Setenv(envm map[string]string) {
 	env, err := os.OpenFile(os.Getenv("GITHUB_ENV"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	// should never happen,
@@ -48,6 +38,16 @@ func Setenv(envm map[string]string) {
 	env.WriteString(envToString(envm))
 
 	// make sure we write it to the GITHUB_ENV
+	env.Close()
+}
+
+// Setenv sets the value of the Github Action workflow output named by the key.
+func SetOutput(envm map[string]string) {
+	env, err := os.OpenFile(os.Getenv("GITHUB_OUTPUT"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	must(err)
+
+	env.WriteString(envToString(envm))
+
 	env.Close()
 }
 
@@ -62,28 +62,29 @@ func Changes() []string {
 	return strings.Fields(changes)
 }
 
-func BranchExist(branchName string) (bool, error) {
-	token := os.Getenv("GH_TOKEN")
-	if token == "" {
-		return false, ErrNoToken
+// Repository returns owner and repository name for the current repository
+//
+// Example: goplus/llpkg, owner: goplus, repo: llpkg
+func Repository() (owner, repo string) {
+	thisRepo := os.Getenv("GITHUB_REPOSITORY")
+	if thisRepo == "" {
+		panic("no github repo")
 	}
-	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
-	defer cancel()
-
-	authClient := client.WithAuthToken(token)
-	branch, resp, err := authClient.Repositories.GetBranch(ctx,
-		os.Getenv("GITHUB_REPOSITORY_OWNER"),
-		os.Getenv("GITHUB_REPOSITORY"),
-		branchName, 0,
-	)
-
-	exists := err == nil &&
-		branch != nil &&
-		resp.StatusCode == http.StatusOK
-
-	return exists, err
+	current := strings.Split(thisRepo, "/")
+	return current[0], current[1]
 }
 
+// Token returns Github Token for current runner
+func Token() string {
+	token := os.Getenv("GH_TOKEN")
+	if token == "" {
+		panic("no GH_TOKEN")
+	}
+	return token
+}
+
+// CreateBranch creates a branch with the speficied name from the speficied tag.
+// It returns an error if creating fail.
 func CreateBranch(branchName, tag string) error {
 	ret, err := exec.Command("git", "checkout", "-b", branchName, tag).CombinedOutput()
 	if err != nil {
@@ -94,26 +95,4 @@ func CreateBranch(branchName, tag string) error {
 		return errors.New(string(ret))
 	}
 	return nil
-}
-
-func IsAssociatedWithPullRequest(sha string) (bool, error) {
-	token := os.Getenv("GH_TOKEN")
-	if token == "" {
-		return false, ErrNoToken
-	}
-	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
-	defer cancel()
-
-	authClient := client.WithAuthToken(token)
-	pulls, resp, err := authClient.PullRequests.ListPullRequestsWithCommit(ctx,
-		os.Getenv("GITHUB_REPOSITORY_OWNER"),
-		os.Getenv("GITHUB_REPOSITORY"),
-		sha, &github.ListOptions{},
-	)
-
-	ok := err == nil &&
-		resp.StatusCode == http.StatusOK &&
-		len(pulls) > 0
-
-	return ok, err
 }
